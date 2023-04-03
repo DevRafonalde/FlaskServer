@@ -43,3 +43,4 @@ app.run(port=6341)
 
 
 # https://stackoverflow.com/questions/9494739/how-to-build-a-systemtray-app-for-windows
+# Trocar uma ideia com alguem q conhece python pra ver isso aqui
