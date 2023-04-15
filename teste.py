@@ -72,15 +72,10 @@ class SysTrayIcon(object):
                                           hinst,
                                           None)
         win32gui.UpdateWindow(self.hwnd)
-        print("teste1")
         self.notify_id = None
-        print("teste2")
         self.refresh_icon()
 
-        print("teste3")
-
         win32gui.PumpMessages()
-        print("teste4")
 
     def _add_ids_to_menu_options(self, menu_options):
         result = []
@@ -227,18 +222,18 @@ def non_string_iterable(obj):
 def executarPrograma(programa):
     print(programa)
     os.system(programa)
-    return "Abriu o Financeiro"
+    return "Abriu o programa na sua máquina"
 
 
 @app.get("/verificarVersao")
 def verificarVersao():
-    return "20230403a"
+    return "20230414a"
 
 
 @app.get("/fechar")
 def fecharAplicacao():
     print("veio pra cá")
-    os.system("S:\\Intranet\\IntranetWebPython\\bats\\fechar.bat")
+    os.system("fechar.bat")
     return "Fechando aplicação"
 
 
@@ -249,15 +244,15 @@ def isAlive():
 
 @app.get("/atualizar")
 def atualizarAplicacao():
-    os.system("S:\\Intranet\\IntranetWebPython\\bats\\atualizar.bat")
+    os.system("atualizar.bat")
     return "Aplicação atualizada"
 
 
 if __name__ == '__main__':
     # import itertools, glob
 
-    icon = "S:\\Intranet\\Intranet\\deco\\midia\\icone.ico"
-    hover_text = "Intranet - 1RISJC"
+    icon = "icone.ico"
+    hover_text = "nomePrograma"
 
 
     def switch_icon(sysTrayIcon):
@@ -266,17 +261,15 @@ if __name__ == '__main__':
 
 
     def atualizarPeloIcon(sysTrayIcon):
-        os.system("S:\\Intranet\\IntranetWebPython\\bats\\atualizar.bat")
+        os.system("atualizar.bat")
 
 
     menu_options = (('Atualizar', icon, atualizarPeloIcon),)
 
 
     def fecharPeloIcon(sysTrayIcon):
-        os.system("S:\\Intranet\\IntranetWebPython\\bats\\fechar.bat")
+        os.system("fechar.bat")
 
-
-    print("teste0")
 
     t1 = threading.Thread(target=app.run, args=(None, 6341, None, True))
     t2 = threading.Thread(target=SysTrayIcon, args=(icon, hover_text, menu_options, fecharPeloIcon, 1, None))
@@ -286,11 +279,6 @@ if __name__ == '__main__':
 
     t1.join()
     t2.join()
-
-    # ysTrayIcon(next(icons), hover_text, menu_options, on_quit=fecharPeloIcon, default_menu_index=1)
-    print("Chegou aqui")
-
-    # app.run(port=6341)
 
 # https://github.com/top2topii/FlaskServiceWin32/issues/1
 # Tava dando problema para executar o exe no arquivo utils.py, escrito abaixo
