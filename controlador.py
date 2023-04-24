@@ -145,7 +145,7 @@ class SysTrayIcon(object):
         # win32gui.SetMenuDefaultItem(menu, 1000, 0)
 
         pos = win32gui.GetCursorPos()
-        # See http://msdn.microsoft.com/library/default.asp?url=/library/en-us/winui/menus_0hdi.asp
+        # Veja http://msdn.microsoft.com/library/default.asp?url=/library/en-us/winui/menus_0hdi.asp
         win32gui.SetForegroundWindow(self.hwnd)
         win32gui.TrackPopupMenu(menu,
                                 win32con.TPM_LEFTALIGN,
@@ -220,19 +220,20 @@ def non_string_iterable(obj):
 
 @app.get("/comando/<path:programa>")
 def executarPrograma(programa):
-    print(programa)
-    os.system(programa)
-    return "Abriu o programa na sua máquina"
+    if str(programa).__contains__("."):
+        os.system(programa)
+    else:
+        os.system("explorer " + str(programa).replace("/", "\\"))
+    return "Abriu o Programa"
 
 
 @app.get("/verificarVersao")
 def verificarVersao():
-    return "20230414a"
+    return "20230403a"
 
 
 @app.get("/fechar")
 def fecharAplicacao():
-    print("veio pra cá")
     os.system("fechar.bat")
     return "Fechando aplicação"
 
@@ -252,7 +253,7 @@ if __name__ == '__main__':
     # import itertools, glob
 
     icon = "icone.ico"
-    hover_text = "nomePrograma"
+    hover_text = "NomeAplicacao"
 
 
     def switch_icon(sysTrayIcon):
@@ -280,6 +281,7 @@ if __name__ == '__main__':
     t1.join()
     t2.join()
 
+
 # https://github.com/top2topii/FlaskServiceWin32/issues/1
 # Tava dando problema para executar o exe no arquivo utils.py, escrito abaixo
 
@@ -292,5 +294,3 @@ if __name__ == '__main__':
 
 
 # https://stackoverflow.com/questions/9494739/how-to-build-a-systemtray-app-for-windows
-# Para gerar o exe, inserir o comando abaixo no console
-# pyinstaller --noconsole --name="IntranetWebPython" --icon="icon.ico" --add-data="icon.ico;." intranetWeb.py
