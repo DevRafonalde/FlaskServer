@@ -1,6 +1,8 @@
 import os
+import sys
 import threading
 
+import psutil
 import win32api  # package pywin32
 import win32con
 import win32gui_struct
@@ -9,18 +11,42 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
-
 try:
     import winxpgui as win32gui
 except ImportError:
     import win32gui
 
 
+def is_program_running(pidfile):
+    if os.path.isfile(pidfile):
+        with open(pidfile, 'r') as file:
+            pid = file.read().strip()
+            return pid in (process.pid for process in psutil.process_iter())
+
+    return False
+
+
+def write_pid_to_file(pidfile):
+    pid = str(os.getpid())
+    with open(pidfile, 'w') as file:
+        file.write(pid)
+
+
+appdata = os.getenv('APPDATA')
+
+pidfile = appdata + '/meupid.pid'
+
+
+if is_program_running(pidfile):
+    print("Processo já existe e não será executado novamente")
+    sys.exit(-1)
+else:
+    write_pid_to_file(pidfile)
+
 class SysTrayIcon(object):
     """TODO"""
     QUIT = 'QUIT'
     SPECIAL_ACTIONS = [QUIT]
-
     FIRST_ID = 1023
 
     def __init__(self,
@@ -30,21 +56,17 @@ class SysTrayIcon(object):
                  on_quit=None,
                  default_menu_index=None,
                  window_class_name=None, ):
-
         self.icon = icon
         self.hover_text = hover_text
         self.on_quit = on_quit
-
-        menu_options = menu_options + (('Quit', None, self.QUIT),)
+        menu_options = menu_options + (('Sair', None, self.QUIT),)
         self._next_action_id = self.FIRST_ID
         self.menu_actions_by_id = set()
         self.menu_options = self._add_ids_to_menu_options(list(menu_options))
         self.menu_actions_by_id = dict(self.menu_actions_by_id)
         del self._next_action_id
-
         self.default_menu_index = (default_menu_index or 0)
         self.window_class_name = window_class_name or "SysTrayIconPy"
-
         message_map = {win32gui.RegisterWindowMessage("TaskbarCreated"): self.restart,
                        win32con.WM_DESTROY: self.destroy,
                        win32con.WM_COMMAND: self.command,
@@ -53,7 +75,7 @@ class SysTrayIcon(object):
         window_class = win32gui.WNDCLASS()
         hinst = window_class.hInstance = win32gui.GetModuleHandle(None)
         window_class.lpszClassName = self.window_class_name
-        window_class.style = win32con.CS_VREDRAW | win32con.CS_HREDRAW;
+        window_class.style = win32con.CS_VREDRAW | win32con.CS_HREDRAW
         window_class.hCursor = win32gui.LoadCursor(0, win32con.IDC_ARROW)
         window_class.hbrBackground = win32con.COLOR_WINDOW
         window_class.lpfnWndProc = message_map  # could also specify a wndproc.
@@ -108,7 +130,6 @@ class SysTrayIcon(object):
         else:
             print("Can't find icon file - using default.")
             hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
-
         if self.notify_id:
             message = win32gui.NIM_MODIFY
         else:
@@ -143,9 +164,8 @@ class SysTrayIcon(object):
         menu = win32gui.CreatePopupMenu()
         self.create_menu(menu, self.menu_options)
         # win32gui.SetMenuDefaultItem(menu, 1000, 0)
-
         pos = win32gui.GetCursorPos()
-        # Veja http://msdn.microsoft.com/library/default.asp?url=/library/en-us/winui/menus_0hdi.asp
+        # See http://msdn.microsoft.com/library/default.asp?url=/library/en-us/winui/menus_0hdi.asp
         win32gui.SetForegroundWindow(self.hwnd)
         win32gui.TrackPopupMenu(menu,
                                 win32con.TPM_LEFTALIGN,
@@ -160,7 +180,6 @@ class SysTrayIcon(object):
         for option_text, option_icon, option_action, option_id in menu_options[::-1]:
             if option_icon:
                 option_icon = self.prep_menu_icon(option_icon)
-
             if option_id in self.menu_actions_by_id:
                 item, extras = win32gui_struct.PackMENUITEMINFO(text=option_text,
                                                                 hbmpItem=option_icon,
@@ -174,12 +193,12 @@ class SysTrayIcon(object):
                                                                 hSubMenu=submenu)
                 win32gui.InsertMenuItem(menu, 0, 1, item)
 
+    # @staticmethod
     def prep_menu_icon(self, icon):
         # First load the icon.
         ico_x = win32api.GetSystemMetrics(win32con.SM_CXSMICON)
         ico_y = win32api.GetSystemMetrics(win32con.SM_CYSMICON)
         hicon = win32gui.LoadImage(0, icon, win32con.IMAGE_ICON, ico_x, ico_y, win32con.LR_LOADFROMFILE)
-
         hdcBitmap = win32gui.CreateCompatibleDC(0)
         hdcScreen = win32gui.GetDC(0)
         hbm = win32gui.CreateCompatibleBitmap(hdcScreen, ico_x, ico_y)
@@ -194,7 +213,6 @@ class SysTrayIcon(object):
         win32gui.DrawIconEx(hdcBitmap, 0, 0, hicon, ico_x, ico_y, 0, 0, win32con.DI_NORMAL)
         win32gui.SelectObject(hdcBitmap, hbmOld)
         win32gui.DeleteDC(hdcBitmap)
-
         return hbm
 
     def command(self, hwnd, msg, wparam, lparam):
@@ -206,7 +224,7 @@ class SysTrayIcon(object):
         if menu_action == self.QUIT:
             win32gui.DestroyWindow(self.hwnd)
         else:
-            menu_action(self)
+            menu_action(self.hwnd)
 
 
 def non_string_iterable(obj):
@@ -220,6 +238,7 @@ def non_string_iterable(obj):
 
 @app.get("/comando/<path:programa>")
 def executarPrograma(programa):
+    print(programa)
     if str(programa).__contains__("."):
         os.system(programa)
     else:
@@ -229,13 +248,12 @@ def executarPrograma(programa):
 
 @app.get("/verificarVersao")
 def verificarVersao():
-    return "20230403a"
+    return "20230519a"
 
 
 @app.get("/fechar")
 def fecharAplicacao():
     os.system("fechar.bat")
-    return "Fechando aplicação"
 
 
 @app.get("/isAlive")
@@ -246,14 +264,13 @@ def isAlive():
 @app.get("/atualizar")
 def atualizarAplicacao():
     os.system("atualizar.bat")
-    return "Aplicação atualizada"
-
+    
 
 if __name__ == '__main__':
-    # import itertools, glob
+    import itertools, glob
 
     icon = "icone.ico"
-    hover_text = "NomeAplicacao"
+    hover_text = "Nome do Programa"
 
 
     def switch_icon(sysTrayIcon):
@@ -262,6 +279,7 @@ if __name__ == '__main__':
 
 
     def atualizarPeloIcon(sysTrayIcon):
+        os.remove(pidfile)
         os.system("atualizar.bat")
 
 
@@ -269,28 +287,17 @@ if __name__ == '__main__':
 
 
     def fecharPeloIcon(sysTrayIcon):
+        os.remove(pidfile)
         os.system("fechar.bat")
 
+    def start_flask_app():
+        app.run(port=6341)
 
-    t1 = threading.Thread(target=app.run, args=(None, 6341, None, True))
-    t2 = threading.Thread(target=SysTrayIcon, args=(icon, hover_text, menu_options, fecharPeloIcon, 1, None))
+    def start_sys_tray_icon():
+        SysTrayIcon(icon, hover_text, menu_options, on_quit=fecharPeloIcon, default_menu_index=1)
 
+    t1 = threading.Thread(target=start_flask_app)
     t1.start()
+
+    t2 = threading.Thread(target=start_sys_tray_icon())
     t2.start()
-
-    t1.join()
-    t2.join()
-
-
-# https://github.com/top2topii/FlaskServiceWin32/issues/1
-# Tava dando problema para executar o exe no arquivo utils.py, escrito abaixo
-
-# Traceback (most recent call last):
-#   23, in show_server_banner
-#   File "click\utils.py", lineFile "intranetWeb.py", line 14, in <module>
-#   File "flask\app.py", line 1186, in run
-#   File "flask\cli.py", line 7 299, in echo
-# AttributeError: 'NoneType' object has no attribute 'write'
-
-
-# https://stackoverflow.com/questions/9494739/how-to-build-a-systemtray-app-for-windows
