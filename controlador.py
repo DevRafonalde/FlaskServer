@@ -193,7 +193,6 @@ class SysTrayIcon(object):
                                                                 hSubMenu=submenu)
                 win32gui.InsertMenuItem(menu, 0, 1, item)
 
-    # @staticmethod
     def prep_menu_icon(self, icon):
         # First load the icon.
         ico_x = win32api.GetSystemMetrics(win32con.SM_CXSMICON)
